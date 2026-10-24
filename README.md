@@ -12,7 +12,8 @@ Prerequisites: Docker Engine with Compose, Node 22+ / npm, or run Node in Docker
 cp .env.example .env
 cp backend/.env.example backend/.env
 cp frontend/.env.example frontend/.env
-# Adjust local database passwords in BOTH .env files if changed.
+# Set MYSQL_PASSWORD and MYSQL_ROOT_PASSWORD in root .env; set the same
+# MYSQL_PASSWORD as DB_PASSWORD in backend/.env. Do not commit these files.
 docker compose build api
 docker compose up -d db
 docker compose run --rm api composer install --no-interaction --prefer-dist

@@ -22,8 +22,8 @@ services:
     environment:
       MYSQL_DATABASE: ${MYSQL_DATABASE:-readduniya}
       MYSQL_USER: ${MYSQL_USER:-readduniya}
-      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-local-development-only}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-local-root-development-only}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:?Set MYSQL_PASSWORD in the untracked root .env}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in the untracked root .env}
     volumes: [mysql_data:/var/lib/mysql]
     healthcheck:
       test: [CMD-SHELL, 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" mysqladmin ping -h localhost -u root --silent']
