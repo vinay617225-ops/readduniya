@@ -1,0 +1,74 @@
+name: readduniya
+x-api: &api
+  build:
+    context: .
+    dockerfile: docker/api.Dockerfile
+    secrets: [proxy_ca]
+  image: readduniya-api:dev
+  working_dir: /app
+  volumes:
+    - ./backend:/app
+    - ./docker/php.ini:/usr/local/etc/php/conf.d/readduniya.ini:ro
+  env_file: ./backend/.env
+  depends_on:
+    db:
+      condition: service_healthy
+  init: true
+  security_opt: [no-new-privileges:true]
+  cap_drop: [ALL]
+services:
+  db:
+    image: mysql:8.4
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-readduniya}
+      MYSQL_USER: ${MYSQL_USER:-readduniya}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-local-development-only}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-local-root-development-only}
+    volumes: [mysql_data:/var/lib/mysql]
+    healthcheck:
+      test: [CMD-SHELL, 'MYSQL_PWD="$$MYSQL_ROOT_PASSWORD" mysqladmin ping -h localhost -u root --silent']
+      interval: 5s
+      timeout: 5s
+      retries: 30
+    # Database is intentionally not exposed to the host.
+  api:
+    <<: *api
+    ports: ["127.0.0.1:8000:8000"]
+  tests:
+    <<: *api
+    profiles: [test]
+    environment:
+      APP_ENV: testing
+      DB_CONNECTION: sqlite
+      DB_DATABASE: ':memory:'
+      CACHE_STORE: array
+      SESSION_DRIVER: array
+      QUEUE_CONNECTION: sync
+    command: [php, artisan, test]
+  worker:
+    <<: *api
+    command: [php, artisan, queue:work, --sleep=2, --tries=2, --timeout=600, --max-time=3600]
+    restart: unless-stopped
+    mem_limit: 1g
+    cpus: 1.5
+    pids_limit: 128
+  scheduler:
+    <<: *api
+    command: [php, artisan, schedule:work]
+    restart: unless-stopped
+  frontend:
+    image: node:22-bookworm-slim
+    user: "1000:1000"
+    working_dir: /app
+    environment:
+      API_PROXY: http://api:8000
+      npm_config_cache: /tmp/npm-cache
+    volumes: [./frontend:/app]
+    command: [npm, run, dev]
+    ports: ["127.0.0.1:5173:5173"]
+    depends_on: [api]
+volumes:
+  mysql_data:
+secrets:
+  proxy_ca:
+    file: ${BUILD_CA_FILE:-/etc/ssl/certs/ca-certificates.crt}
